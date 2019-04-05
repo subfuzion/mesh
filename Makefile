@@ -4,6 +4,7 @@ ASSETS := $(shell find assets -type f -print)
 
 build: bin/meshdemo
 rebuild: clean build
+all: check clean build
 
 bin/meshdemo: generate
 	go build -o $@ "$(CMD)/$(@F)"

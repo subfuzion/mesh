@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/subfuzion/meshdemo"
+	"github.com/subfuzion/meshdemo/dotenv"
 	"github.com/subfuzion/meshdemo/pkg/fsutil"
+	"github.com/subfuzion/meshdemo/pkg/pretty"
 )
 
 func main() {
@@ -17,4 +19,10 @@ func main() {
 		fmt.Println(err)
 	}
 	fmt.Printf("%s\n", bytes)
+
+	env, err := dotenv.Read()
+	if err != nil {
+		fmt.Println(err)
+	}
+	pretty.Println(env)
 }
