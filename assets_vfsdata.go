@@ -2,7 +2,7 @@
 
 // +build !dev
 
-package meshdemo
+package mesh
 
 import (
 	"bytes"
@@ -21,12 +21,14 @@ var Assets = func() http.FileSystem {
 	fs := vfsgen۰FS{
 		"/": &vfsgen۰DirInfo{
 			name:    "/",
-			modTime: time.Date(2019, 4, 5, 11, 20, 0, 663801942, time.UTC),
+			modTime: time.Date(2019, 4, 5, 13, 45, 26, 241546252, time.UTC),
 		},
-		"/template.env": &vfsgen۰FileInfo{
-			name:    "template.env",
-			modTime: time.Date(2019, 4, 5, 11, 20, 0, 663801942, time.UTC),
-			content: []byte("\x68\x65\x6c\x6c\x6f\x20\x77\x6f\x72\x6c\x64\x21\x0a"),
+		"/template.env": &vfsgen۰CompressedFileInfo{
+			name:             "template.env",
+			modTime:          time.Date(2019, 4, 5, 13, 45, 26, 241546252, time.UTC),
+			uncompressedSize: 410,
+
+			compressedContent: []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x64\xcf\x4f\x4e\xeb\x30\x10\x06\xf0\xfd\x3b\x45\x4e\xf0\x6e\xc0\xc2\x4a\xa7\xc1\xc2\x7f\x2a\xdb\x6d\x55\x36\x96\x15\x86\x60\xe1\xc4\x91\x1d\x5a\x4a\xd5\xbb\x23\x11\x91\x1a\x58\xcf\xef\x9b\x99\x0f\xdf\xc7\x98\xa6\x8a\xec\xb5\xdd\x28\xb9\xa6\x0c\xee\x2e\x97\xea\xbf\x3b\xe5\x31\xc5\x67\x1f\xb0\xba\x5e\xff\x15\x68\x05\x6b\xb2\x65\xc6\x2a\x68\xa8\x14\xdf\x36\x61\xe7\xe3\x50\x50\x10\x3b\xaa\xa4\xe0\x20\x8c\x15\x84\xcf\x4b\x71\x38\x0e\xae\xc7\x6a\x51\x1c\xf4\xfd\x6d\xdc\x63\x7e\x99\xe7\x0b\x78\x80\x83\xdd\x10\xaa\x6e\xe8\x15\xcf\xa3\xf3\xe9\xe7\x29\x79\xb0\x94\x93\x66\xb9\x12\xcf\xbe\x77\x5d\xb9\xa8\x66\x5b\x6d\x40\x59\x4d\x1f\x67\xd5\x86\xb7\x3c\x61\xca\xfe\xa3\x64\x1a\xd4\x8e\xd6\xa0\xed\x4a\x72\x42\xe7\x7a\x19\xd3\xd1\xb7\x98\x9f\x62\xef\x7c\xd9\xb1\x96\x4c\x2a\xdb\x10\x03\x7b\x52\x3e\xd0\xc6\x10\x53\xe7\x26\x3c\xb9\xbf\x7f\x7c\x65\x0c\x30\x06\xea\x77\x64\xc2\x10\x30\x2d\x89\xcf\x00\x00\x00\xff\xff\x23\xbf\xd4\x36\x9a\x01\x00\x00"),
 		},
 	}
 	fs["/"].(*vfsgen۰DirInfo).entries = []os.FileInfo{
@@ -46,10 +48,15 @@ func (fs vfsgen۰FS) Open(path string) (http.File, error) {
 	}
 
 	switch f := f.(type) {
-	case *vfsgen۰FileInfo:
-		return &vfsgen۰File{
-			vfsgen۰FileInfo: f,
-			Reader:          bytes.NewReader(f.content),
+	case *vfsgen۰CompressedFileInfo:
+		gr, err := gzip.NewReader(bytes.NewReader(f.compressedContent))
+		if err != nil {
+			// This should never happen because we generate the gzip bytes such that they are always valid.
+			panic("unexpected error reading own gzip compressed bytes: " + err.Error())
+		}
+		return &vfsgen۰CompressedFile{
+			vfsgen۰CompressedFileInfo: f,
+			gr:                        gr,
 		}, nil
 	case *vfsgen۰DirInfo:
 		return &vfsgen۰Dir{
@@ -61,39 +68,75 @@ func (fs vfsgen۰FS) Open(path string) (http.File, error) {
 	}
 }
 
-// We already imported "compress/gzip" and "io/ioutil", but ended up not using them. Avoid unused import error.
-var _ = gzip.Reader{}
-var _ = ioutil.Discard
-
-// vfsgen۰FileInfo is a static definition of an uncompressed file (because it's not worth gzip compressing).
-type vfsgen۰FileInfo struct {
-	name    string
-	modTime time.Time
-	content []byte
+// vfsgen۰CompressedFileInfo is a static definition of a gzip compressed file.
+type vfsgen۰CompressedFileInfo struct {
+	name              string
+	modTime           time.Time
+	compressedContent []byte
+	uncompressedSize  int64
 }
 
-func (f *vfsgen۰FileInfo) Readdir(count int) ([]os.FileInfo, error) {
+func (f *vfsgen۰CompressedFileInfo) Readdir(count int) ([]os.FileInfo, error) {
 	return nil, fmt.Errorf("cannot Readdir from file %s", f.name)
 }
-func (f *vfsgen۰FileInfo) Stat() (os.FileInfo, error) { return f, nil }
+func (f *vfsgen۰CompressedFileInfo) Stat() (os.FileInfo, error) { return f, nil }
 
-func (f *vfsgen۰FileInfo) NotWorthGzipCompressing() {}
-
-func (f *vfsgen۰FileInfo) Name() string       { return f.name }
-func (f *vfsgen۰FileInfo) Size() int64        { return int64(len(f.content)) }
-func (f *vfsgen۰FileInfo) Mode() os.FileMode  { return 0444 }
-func (f *vfsgen۰FileInfo) ModTime() time.Time { return f.modTime }
-func (f *vfsgen۰FileInfo) IsDir() bool        { return false }
-func (f *vfsgen۰FileInfo) Sys() interface{}   { return nil }
-
-// vfsgen۰File is an opened file instance.
-type vfsgen۰File struct {
-	*vfsgen۰FileInfo
-	*bytes.Reader
+func (f *vfsgen۰CompressedFileInfo) GzipBytes() []byte {
+	return f.compressedContent
 }
 
-func (f *vfsgen۰File) Close() error {
-	return nil
+func (f *vfsgen۰CompressedFileInfo) Name() string       { return f.name }
+func (f *vfsgen۰CompressedFileInfo) Size() int64        { return f.uncompressedSize }
+func (f *vfsgen۰CompressedFileInfo) Mode() os.FileMode  { return 0444 }
+func (f *vfsgen۰CompressedFileInfo) ModTime() time.Time { return f.modTime }
+func (f *vfsgen۰CompressedFileInfo) IsDir() bool        { return false }
+func (f *vfsgen۰CompressedFileInfo) Sys() interface{}   { return nil }
+
+// vfsgen۰CompressedFile is an opened compressedFile instance.
+type vfsgen۰CompressedFile struct {
+	*vfsgen۰CompressedFileInfo
+	gr      *gzip.Reader
+	grPos   int64 // Actual gr uncompressed position.
+	seekPos int64 // Seek uncompressed position.
+}
+
+func (f *vfsgen۰CompressedFile) Read(p []byte) (n int, err error) {
+	if f.grPos > f.seekPos {
+		// Rewind to beginning.
+		err = f.gr.Reset(bytes.NewReader(f.compressedContent))
+		if err != nil {
+			return 0, err
+		}
+		f.grPos = 0
+	}
+	if f.grPos < f.seekPos {
+		// Fast-forward.
+		_, err = io.CopyN(ioutil.Discard, f.gr, f.seekPos-f.grPos)
+		if err != nil {
+			return 0, err
+		}
+		f.grPos = f.seekPos
+	}
+	n, err = f.gr.Read(p)
+	f.grPos += int64(n)
+	f.seekPos = f.grPos
+	return n, err
+}
+func (f *vfsgen۰CompressedFile) Seek(offset int64, whence int) (int64, error) {
+	switch whence {
+	case io.SeekStart:
+		f.seekPos = 0 + offset
+	case io.SeekCurrent:
+		f.seekPos += offset
+	case io.SeekEnd:
+		f.seekPos = f.uncompressedSize + offset
+	default:
+		panic(fmt.Errorf("invalid whence value: %v", whence))
+	}
+	return f.seekPos, nil
+}
+func (f *vfsgen۰CompressedFile) Close() error {
+	return f.gr.Close()
 }
 
 // vfsgen۰DirInfo is a static definition of a directory.

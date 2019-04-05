@@ -1,22 +1,23 @@
-PKG := github.com/subfuzion/meshdemo
+PKG := github.com/subfuzion/mesh
 CMD := $(PKG)/cmd
 ASSETS := $(shell find assets -type f -print)
 
-build: bin/meshdemo
-rebuild: clean build
-all: check clean build
+build: bin/mesh
+rebuild: generate build
+all: clean generate check build
 
-bin/meshdemo: generate
+bin/mesh: assets_vfsdata.go
 	go build -o $@ "$(CMD)/$(@F)"
 
 assets_vfsdata.go: $(ASSETS)
 	go generate
 
+.PHONY: generate
 generate: assets_vfsdata.go
 
 PHONY: dev
 dev:
-	go build -o bin/meshdemo -tags dev $(CMD)/meshdemo
+	go build -o bin/mesh -tags dev $(CMD)/mesh
 
 .PHONY fmt:
 	@gofmt -d -e -l -s -w .

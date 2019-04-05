@@ -1,6 +1,6 @@
 // +build dev
 
-package meshdemo
+package mesh
 
 import (
 	"net/http"

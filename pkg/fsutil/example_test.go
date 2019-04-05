@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/subfuzion/meshdemo/pkg/fsutil"
+	"github.com/subfuzion/mesh/pkg/fsutil"
 )
 
 // This example shows the basic usage of the package: wrap an instance

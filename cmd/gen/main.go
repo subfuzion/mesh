@@ -11,7 +11,7 @@ func main() {
 	fs := http.Dir("assets")
 
 	err := vfsgen.Generate(fs, vfsgen.Options{
-		PackageName:  "meshdemo",
+		PackageName:  "mesh",
 		BuildTags:    "!dev",
 		VariableName: "Assets",
 	})
