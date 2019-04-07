@@ -28,6 +28,7 @@ vet:
 
 .PHONY: lint
 lint:
+	@which golint >/dev/null || go get -u golang.org/x/lint/golint
 	@golint ./...
 
 .PHONY: check
